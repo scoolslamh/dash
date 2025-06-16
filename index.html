@@ -188,7 +188,7 @@
     <button class="export-btn" onclick="exportConfirmed()">📤 تصدير المؤكدة</button>
     <button class="export-btn" onclick="exportPending()">📤 تصدير غير المؤكدة</button>
 
-    <details open>
+    <details>
       <summary>✅ المدارس التي أكدت بياناتها</summary>
       <table id="confirmedTable"><thead></thead><tbody></tbody></table>
     </details>
@@ -280,19 +280,23 @@ function buildTable(id, data) {
 }
 
 function exportConfirmed() {
-  const confirmed = allSchools.filter(s => s["حالة التأكيد"] === "تم التأكيد");
+  const sector = document.getElementById("sectorFilter").value;
+  const filtered = sector === "all" ? allSchools : allSchools.filter(s => s["القطاع"] === sector);
+  const confirmed = filtered.filter(s => s["حالة التأكيد"] === "تم التأكيد");
   const wb = XLSX.utils.book_new();
   const ws = XLSX.utils.json_to_sheet(confirmed);
   XLSX.utils.book_append_sheet(wb, ws, "المؤكدة");
-  XLSX.writeFile(wb, "المدارس_المؤكدة.xlsx");
+  XLSX.writeFile(wb, `المدارس_المؤكدة_${sector === 'all' ? 'جميع_القطاعات' : sector}.xlsx`);
 }
 
 function exportPending() {
-  const pending = allSchools.filter(s => s["حالة التأكيد"] !== "تم التأكيد");
+  const sector = document.getElementById("sectorFilter").value;
+  const filtered = sector === "all" ? allSchools : allSchools.filter(s => s["القطاع"] === sector);
+  const pending = filtered.filter(s => s["حالة التأكيد"] !== "تم التأكيد");
   const wb = XLSX.utils.book_new();
   const ws = XLSX.utils.json_to_sheet(pending);
   XLSX.utils.book_append_sheet(wb, ws, "غير المؤكدة");
-  XLSX.writeFile(wb, "المدارس_غير_المؤكدة.xlsx");
+  XLSX.writeFile(wb, `المدارس_غير_المؤكدة_${sector === 'all' ? 'جميع_القطاعات' : sector}.xlsx`);
 }
 
 function renderSectorProgress() {
