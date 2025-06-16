@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <title>لوحة بيانات المدارس - تسجيل ودخول</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap');
+    body {
+      font-family: 'Tajawal', sans-serif;
+      margin: 0;
+      padding: 0;
+      background: #f4f6f9;
+    }
+    header {
+      background: #155fa0;
+      color: white;
+      padding: 1rem;
+      text-align: center;
+      font-size: 1.4rem;
+    }
+    .login-box {
+      max-width: 400px;
+      margin: 3rem auto;
+      background: white;
+      padding: 2rem;
+      border-radius: 10px;
+      box-shadow: 0 1px 10px rgba(0,0,0,0.1);
+      text-align: center;
+    }
+    input, button {
+      width: 90%;
+      padding: 0.6rem;
+      margin-top: 1rem;
+      font-size: 1rem;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+    button {
+      background-color: #155fa0;
+      color: white;
+      cursor: pointer;
+    }
+    .error { color: red; margin-top: 1rem; }
+    .spinner {
+      margin: 1rem auto;
+      width: 40px;
+      height: 40px;
+      border: 5px solid #ccc;
+      border-top: 5px solid #155fa0;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      display: none;
+    }
+    @keyframes spin { 100% { transform: rotate(360deg); } }
+
+    #dashboardSection { display: none; }
+
+    .container {
+      max-width: 1200px;
+      margin: auto;
+      padding: 1rem;
+    }
+    .cards {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-around;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    .card {
+      background: white;
+      border-radius: 10px;
+      padding: 1rem;
+      text-align: center;
+      flex: 1 1 200px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    }
+    .card h3 {
+      margin: 0.5rem 0;
+      color: #144b80;
+    }
+    .card span {
+      font-size: 1.2rem;
+      font-weight: bold;
+    }
+    .progress-bar, .sector-progress {
+      background: #e4edf5;
+      border-radius: 20px;
+      overflow: hidden;
+      height: 24px;
+      margin-bottom: 0.5rem;
+    }
+    .progress {
+      height: 100%;
+      background: #1d8f61;
+      text-align: center;
+      color: white;
+      line-height: 24px;
+      transition: width 0.5s ease-in-out;
+    }
+    .sector-name {
+      font-weight: bold;
+      margin-top: 0.5rem;
+      margin-bottom: 0.2rem;
+    }
+    .sector-progress-container {
+      margin-bottom: 1rem;
+    }
+    select {
+      padding: 0.5rem;
+      margin-bottom: 1rem;
+      font-size: 1rem;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      width: 100%;
+      max-width: 300px;
+    }
+    details summary {
+      cursor: pointer;
+      padding: 0.5rem;
+      background: #e4edf5;
+      border-radius: 6px;
+      font-weight: bold;
+      margin-top: 1rem;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 0.5rem;
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 0.6rem;
+      text-align: right;
+    }
+    th {
+      background: #f0f0f0;
+    }
+    .export-btn {
+      background: #144b80;
+      color: white;
+      padding: 0.4rem 0.8rem;
+      font-size: 0.9rem;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      margin: 0.2rem;
+    }
+  </style>
+</head>
+<body>
+<header>لوحة متابعة بيانات المدارس</header>
+
+<div id="loginSection" class="login-box">
+  <label>📌 أدخل السجل المدني:</label>
+  <input type="text" id="userCode" placeholder="مثال: 1045649348" />
+  <button onclick="verifyUser()">دخول</button>
+  <div class="spinner" id="spinner"></div>
+  <div class="error" id="errorMsg"></div>
+</div>
+
+<div id="dashboardSection">
+  <div class="container">
+    <div class="cards">
+      <div class="card">
+        <h3>📋 إجمالي المدارس</h3>
+        <span id="totalSchools">-</span>
+      </div>
+      <div class="card">
+        <h3>✅ المؤكدة</h3>
+        <span id="confirmedSchools">-</span>
+      </div>
+      <div class="card">
+        <h3>❌ غير المؤكدة</h3>
+        <span id="pendingSchools">-</span>
+      </div>
+    </div>
+
+    <div class="progress-bar"><div id="progressBar" class="progress">0%</div></div>
+
+    <div id="sectorProgressBars"></div>
+
+    <select id="sectorFilter" onchange="renderTables()">
+      <option value="all">جميع القطاعات</option>
+    </select>
+    <button class="export-btn" onclick="exportConfirmed()">📤 تصدير المؤكدة</button>
+    <button class="export-btn" onclick="exportPending()">📤 تصدير غير المؤكدة</button>
+
+    <details open>
+      <summary>✅ المدارس التي أكدت بياناتها</summary>
+      <table id="confirmedTable"><thead></thead><tbody></tbody></table>
+    </details>
+
+    <details>
+      <summary>❌ المدارس التي لم تؤكد بياناتها</summary>
+      <table id="pendingTable"><thead></thead><tbody></tbody></table>
+    </details>
+  </div>
+</div>
+
+<script>
+const users = ["1045649348", "1047631930"];
+const endpoint = "https://script.google.com/macros/s/AKfycbyVKX8X-SPH1nl_r9IZpRQX5pHU1-8K9Y3zJStl4EO-2dqR2aS7lG0OZyc2UKq-V0wm/exec";
+let allSchools = [];
+
+function verifyUser() {
+  const code = document.getElementById("userCode").value.trim();
+  const error = document.getElementById("errorMsg");
+  const spinner = document.getElementById("spinner");
+  error.textContent = "";
+  spinner.style.display = "block";
+  setTimeout(() => {
+    if (users.includes(code)) {
+      document.getElementById("loginSection").style.display = "none";
+      document.getElementById("dashboardSection").style.display = "block";
+      loadDashboard();
+    } else {
+      error.textContent = "⚠️ اسم المستخدم غير موجود أو غير مخول.";
+    }
+    spinner.style.display = "none";
+  }, 1000);
+}
+
+function loadDashboard() {
+  fetch(endpoint).then(res => res.json()).then(data => {
+    allSchools = data.schools || [];
+    populateSectorFilter();
+    renderTables();
+    renderSectorProgress();
+  });
+}
+
+function populateSectorFilter() {
+  const sectors = [...new Set(allSchools.map(s => s["القطاع"]))];
+  const select = document.getElementById("sectorFilter");
+  sectors.forEach(sec => {
+    const opt = document.createElement("option");
+    opt.value = sec;
+    opt.textContent = sec;
+    select.appendChild(opt);
+  });
+}
+
+function renderTables() {
+  const sector = document.getElementById("sectorFilter").value;
+  const filtered = sector === "all" ? allSchools : allSchools.filter(s => s["القطاع"] === sector);
+  const confirmed = filtered.filter(s => s["حالة التأكيد"] === "تم التأكيد");
+  const pending = filtered.filter(s => s["حالة التأكيد"] !== "تم التأكيد");
+  document.getElementById("totalSchools").textContent = filtered.length;
+  document.getElementById("confirmedSchools").textContent = confirmed.length;
+  document.getElementById("pendingSchools").textContent = pending.length;
+  const percent = filtered.length ? Math.round((confirmed.length / filtered.length) * 100) : 0;
+  document.getElementById("progressBar").style.width = percent + "%";
+  document.getElementById("progressBar").textContent = percent + "%";
+  buildTable("confirmedTable", confirmed);
+  buildTable("pendingTable", pending);
+}
+
+function buildTable(id, data) {
+  const headers = Object.keys(data[0] || {});
+  const table = document.getElementById(id);
+  table.innerHTML = "";
+  const thead = table.createTHead();
+  const headerRow = thead.insertRow();
+  headers.forEach(h => {
+    const th = document.createElement("th");
+    th.textContent = h;
+    headerRow.appendChild(th);
+  });
+  const tbody = table.createTBody();
+  data.forEach(row => {
+    const tr = tbody.insertRow();
+    headers.forEach(h => {
+      const td = tr.insertCell();
+      td.textContent = row[h] || "-";
+    });
+  });
+}
+
+function exportConfirmed() {
+  const confirmed = allSchools.filter(s => s["حالة التأكيد"] === "تم التأكيد");
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.json_to_sheet(confirmed);
+  XLSX.utils.book_append_sheet(wb, ws, "المؤكدة");
+  XLSX.writeFile(wb, "المدارس_المؤكدة.xlsx");
+}
+
+function exportPending() {
+  const pending = allSchools.filter(s => s["حالة التأكيد"] !== "تم التأكيد");
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.json_to_sheet(pending);
+  XLSX.utils.book_append_sheet(wb, ws, "غير المؤكدة");
+  XLSX.writeFile(wb, "المدارس_غير_المؤكدة.xlsx");
+}
+
+function renderSectorProgress() {
+  const sectors = [...new Set(allSchools.map(s => s["القطاع"]))];
+  const container = document.getElementById("sectorProgressBars");
+  container.innerHTML = "";
+  sectors.forEach(sec => {
+    const sectorSchools = allSchools.filter(s => s["القطاع"] === sec);
+    const confirmed = sectorSchools.filter(s => s["حالة التأكيد"] === "تم التأكيد");
+    const percent = sectorSchools.length ? Math.round((confirmed.length / sectorSchools.length) * 100) : 0;
+    const wrapper = document.createElement("div");
+    wrapper.className = "sector-progress-container";
+    wrapper.innerHTML = `
+      <div class="sector-name">${sec}</div>
+      <div class="sector-progress">
+        <div class="progress" style="width: ${percent}%">${percent}%</div>
+      </div>
+    `;
+    container.appendChild(wrapper);
+  });
+}
+</script>
+</body>
+</html>
