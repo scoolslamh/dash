@@ -4,7 +4,15 @@
   <meta charset="UTF-8" />
   <title>لوحة بيانات المدارس - تسجيل ودخول</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js">window.addEventListener("load", () => {
+  const savedUser = localStorage.getItem("loggedInUser");
+  if (savedUser && users.includes(savedUser)) {
+    document.getElementById("loginSection").style.display = "none";
+    document.getElementById("dashboardSection").style.display = "block";
+    loadDashboard();
+  }
+});
+</script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap');
     body {
@@ -207,6 +215,7 @@ let allSchools = [];
 
 function verifyUser() {
   const code = document.getElementById("userCode").value.trim();
+  localStorage.setItem("loggedInUser", code);
   const error = document.getElementById("errorMsg");
   const spinner = document.getElementById("spinner");
   error.textContent = "";
